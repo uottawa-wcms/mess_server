@@ -1,0 +1,37 @@
+<?php
+
+function service_controller_twoway_twoway_service() {
+  return array(
+    'managed_service_request' => array(
+      'callback' => 'service_controller_twoway_request',
+      'description' => 'Service to request the result of a managed external service',
+    ),
+  );
+}
+
+function service_controller_twoway_request($vars) {
+  $service = service_controller_load($vars['service']);
+  $token = service_controller_token_load($vars['user'], $vars['service']);
+  if ($vars['secret'] != $token->user_token) {
+    return service_controller_generate_error('Invalid token for service');
+  } else {
+    return service_controller_execute($service, $token);
+  }
+}
+
+function service_controller_twoway_invoke($remote, $service_key, $user_key, $user_secret) {
+  module_load_include('inc', 'twoway', 'twoway.invoke');
+  $service = new TwoWayService('service_controller_twoway', 'managed_service_request', $remote);
+  try {
+    return $service->invoke(array(
+      'service' => $service_key,
+      'user' => $user_key,
+      'secret' => $user_secret,
+    ));
+  } catch (TwoWayException $e) {
+    return array(
+      'error' => 1,
+      'messages' => array('Could not execute two-way request'),
+    );
+  }
+}

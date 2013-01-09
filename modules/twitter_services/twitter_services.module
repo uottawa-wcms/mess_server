@@ -1,0 +1,38 @@
+<?php
+
+function twitter_services_mess_services() {
+  return array(
+    'twitter_user_timeline' => array(
+      'title' => t('User Timeline'),
+      'category' => t('Twitter'),
+      'class' => 'UserTimelineTwitterService',
+      'file' => 'classes/UserTimelineTwitterService.inc',
+    )
+  );
+}
+
+function twitter_services_get_connection($ckey, $csecret, $utoken, $usecret) {
+  $library = libraries_load('tmhoauth');
+  if ($library && (!empty($library['loaded']))) {
+    $connection = new tmhOAuth(array(
+      'consumer_key' => $ckey,
+      'consumer_secert' => $csecret,
+      'user_token' => $utoken,
+      'user_secret' => $usecret,
+    ));
+    return $connection;
+  } else {
+    drupal_set_message(t('Missing tmhOAuth library. Please download it.'));
+    throw new Exception(t('Could not load tmhOAuth library'));
+  }
+  return FALSE;
+}
+
+function twitter_services_rest_call(&$connection, $service, $params = array(), $method = 'GET') {
+  $url = $connection->url($service);
+  $connection->request($method, $url, $params);
+  if ($connection->response['code'] < 400) {
+    return json_decode($connection->response['response'], TRUE);
+  }
+  return FALSE;
+}

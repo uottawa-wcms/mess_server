@@ -1,0 +1,7 @@
+name = Managed Twitter Services
+description = "Provides twitter integration for managed services"
+core = 7.x
+package = "Web Services"
+
+dependencies[] = service_controller
+dependencies[] = lib_tmhoauth

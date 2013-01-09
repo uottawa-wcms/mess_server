@@ -1,0 +1,7 @@
+name = Two-Way Integration for MESS
+package = Web Services
+core = 7.x
+description = "Provides two-way integration for MESS"
+
+dependencies[] = twoway
+dependencies[] = mess_server

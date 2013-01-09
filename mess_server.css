@@ -1,0 +1,19 @@
+.service_title,
+.service_key {
+  float: left;
+  margin-bottom: 0px;
+  padding-bottom: 0px;
+}
+.service-title {
+  font-size: 22px;
+}
+.service_key {
+  margin-left: 10px;
+}
+.service_type {
+  clear: both;
+  margin-top: 0px;
+  padding-top: 0px;
+  font-weight: bold;
+  border-bottom: 1px solid #000000;
+}

@@ -1,0 +1,127 @@
+<?php
+
+function mess_server_schema() {
+  return array(
+    'mess_server_services' => _mess_server_schema_services(),
+    'mess_server_cache' => drupal_get_schema_unprocessed('system', 'cache'),
+    'mess_server_access' => _mess_server_schema_access(),
+  );
+}
+
+/**
+ * Table definition for mess_server_access
+ */
+function _mess_server_schema_access() {
+  return array(
+    'fields' => array(
+      'service_key' => array(
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+        'serialize' => FALSE,
+        'binary' => FALSE,
+      ),
+      'user_key' => array(
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+        'serialize' => FALSE,
+        'binary' => FALSE,
+      ),
+      'user_token' => array(
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+        'serialize' => FALSE,
+        'binary' => FALSE,
+      ),
+      'has_access' => array(
+        'type' => 'char',
+        'length' => 1,
+        'not null' => TRUE,
+        'serialize' => FALSE,
+        'binary' => FALSE,
+        'default' => 'Y',
+      ),
+      'count' => array(
+        'type' => 'int',
+        'size' => 'normal',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'errors' => array(
+        'type' => 'int',
+        'size' => 'normal',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'last' => array(
+        'type' => 'int',
+        'size' => 'normal',
+        'unsigned' => FALSE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'usage_note' => array(
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array(
+      'service_key',
+      'user_key',
+    ),
+    'unique keys' => array(),
+    'indexes' => array(),
+  );
+}
+
+/**
+ * Table definition for mess_server_services
+ */
+function _mess_server_schema_services() {
+  return array(
+    'fields' => array(
+      'title' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'serialize' => FALSE,
+        'binary' => FALSE,
+      ),
+      'service_key' => array(
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+        'serialize' => FALSE,
+        'binary' => FALSE,
+      ),
+      'definition' => array(
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+        'serialize' => FALSE,
+        'binary' => FALSE,
+      ),
+      'settings' => array(
+        'type' => 'blob',
+        'size' => 'big',
+        'not null' => TRUE,
+        'serialize' => TRUE,
+      ),
+      'description' => array(
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array(
+      'service_key',
+    ),
+    'unique keys' => array(),
+    'indexes' => array(),
+  );
+}

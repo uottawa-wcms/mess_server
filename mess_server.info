@@ -1,0 +1,6 @@
+name = Managed External Services Solution (MESS) Server
+description = "Provides a web API for creating and managing managed web services."
+core = 7.x
+package = "Web Services"
+
+files[] = classes/ServiceControllerBase.inc

@@ -1,0 +1,210 @@
+<?php
+
+function mess_server_generate_error($message) {
+  if (!is_array($message)) {
+    $message = array($message);
+  }
+  return array(
+    'error' => 1,
+    'messages' => $message,
+  );
+}
+
+function mess_server_execute($service, $token) {
+  $controller = mess_server_provider($service->definition);
+  $results = $controller->provide($service->settings);
+  $result_object = array();
+  $update_field = 'errors';
+  if ($errors = $controller->checkErrors()) {
+    $result_object = array(
+      'error' => 1,
+      'messages' => $errors
+    );
+  } else {
+    $result_object = array(
+      'error' => 0,
+      'result' => $results,
+    );
+    $update_field = 'count';
+  }
+  db_update('mess_server_access')
+      ->expression($update_field, $update_field . ' + 1')
+      ->fields(array(
+        'last' => time(),
+      ))
+      ->condition('service_key', $token->service_key)
+      ->condition('user_key', $token->user_key)
+      ->execute();
+  return $result_object;
+}
+
+function mess_server_flush_caches() {
+  return array('mess_server_cache');
+}
+
+function mess_server_permission() {
+  return array(
+    'admin service controller' => array(
+      'title' => t('MESS Administrator'),
+      'description' => t('Allows user to create and manage all the remote services'),
+      'restrict access' => TRUE,
+    ),
+  );
+}
+
+function mess_server_menu() {
+  return array(
+    'mess_server/%mess_server' => array(
+      'title' => 'Access Service',
+      'page callback' => 'mess_server_provider',
+      'page arguments' => array(1),
+      'access callback' => TRUE,
+      'file' => 'mess_server.pages.inc',
+      'type' => MENU_CALLBACK,
+    ),
+    'admin/structure/remote_services' => array(
+      'title' => 'MESS Services',
+      'description' => 'Manage the different types of remote services that this machine manages.',
+      'page callback' => 'mess_server_list',
+      'access arguments' => array('admin service controller'),
+      'file' => 'mess_server.pages.inc',
+      'type' => MENU_NORMAL_ITEM,
+    ),
+    'admin/structure/remote_services/%mess_server' => array(
+      'title callback' => 'mess_server_get_title',
+      'title arguments' => array(3),
+      'page callback' => 'mess_server_service_info',
+      'page arguments' => array(3),
+      'access arguments' => array('admin service controller'),
+      'file' => 'mess_server.pages.inc',
+      'type' => MENU_NORMAL_ITEM,
+    ),
+    'admin/structure/remote_services/%mess_server/view' => array(
+      'title' => 'View',
+      'type' => MENU_LOCAL_TASK,
+      'access arguments' => array('admin service controller'),
+      'weight' => -10,
+    ),
+    'admin/structure/remote_services/add' => array(
+      'title' => 'Add Remote Service',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('mess_server_service_form'),
+      'access arguments' => array('admin service controller'),
+      'file' => 'mess_server.pages.inc',
+      'type' => MENU_LOCAL_ACTION,
+    ),
+    'admin/structure/remote_services/%mess_server/edit' => array(
+      'title' => 'Edit',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('mess_server_service_form', 3),
+      'access arguments' => array('admin service controller'),
+      'file' => 'mess_server.pages.inc',
+      'type' => MENU_LOCAL_TASK,
+    ),
+    'admin/structure/remote_services/%mess_server/add_token' => array(
+      'title' => 'Add Access Token',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('mess_server_token_form', 3),
+      'access arguments' => array('admin service controller'),
+      'file' => 'mess_server.pages.inc',
+      'type' => MENU_CALLBACK,
+    ),
+    'admin/structure/remote_services/%mess_server/%mess_server_token/edit' => array(
+      'title callback' => 'mess_server_get_token_title',
+      'title arguments' => array(3, 4),
+      'load arguments' => array(3),
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('mess_server_token_form', 3, 4),
+      'access arguments' => array('admin service controller'),
+      'file' => 'mess_server.pages.inc',
+      'type' => MENU_CALLBACK,
+    ),
+ );
+}
+
+function mess_server_get_title($service) {
+  return $service->title;
+}
+
+function mess_server_get_token_title($service, $token) {
+  return $token->service->title . ' - ' . $token->user_key;
+}
+
+function mess_server_load($controller_id) {
+  $service = db_query('SELECT * FROM {mess_server_services} WHERE service_key = :key', array(
+    ':key' => $controller_id
+  ))->fetchObject();
+  $service->settings = unserialize($service->settings);
+  return $service;
+}
+
+function mess_server_token_load($controller_id, $service_token_id) {
+  $service = mess_server_load($controller_id);
+  if ($service) {
+    $token = db_query('SELECT * FROM {mess_server_access} WHERE service_key = :skey AND user_key = :ukey', array(
+      ':skey' => $controller_id,
+      ':ukey' => $service_token_id,
+    ))->fetchObject();
+    if (!$token) {
+      return FALSE;
+    }
+    $token->service = $service;
+    return $token;
+  }
+  return FALSE;
+}
+
+function mess_server_theme() {
+  return array(
+    'view_mess_server' => array(
+      'variables' => array(
+        'title' => '',
+        'service_key' => '',
+        'service_type' => '',
+        'description' => '',
+        'tokens' => array(),
+      ),
+      'file' => 'mess_server.theme.inc',
+    )
+  );
+}
+
+function mess_server_get_controllers($def = NULL) {
+  // we should cache this
+  $controllers = array();
+  foreach (module_implements('mess_services') as $module) {
+    $hook = $module . '_mess_services';
+    $local_controllers = $hook();
+    foreach ($local_controllers as $key => $controller) {
+      $controller['module'] = $module;
+      $controllers[$key] = $controller;
+    }
+  }
+  if (!empty($def)) {
+    if (!empty($controllers[$def])) {
+      return $controllers[$def];
+    } else {
+      return NULL;
+    }
+  }
+  return $controllers;
+}
+
+function mess_server_get_controller($def) {
+  $def = mess_server_get_controllers($def);
+  if (!empty($def['file'])) {
+    $file = drupal_get_path('module', $def['module']) . '/' . $def['file'];
+    if (file_exists($file)) {
+      require_once($file);
+    }
+    $class = $def['class'];
+    return new $class();
+  }
+}
+
+function mess_server_service_key_exists($key) {
+  if (mess_server_load($key)) {
+    return TRUE;
+  }
+  return FALSE;
+}
